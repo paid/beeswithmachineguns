@@ -325,7 +325,7 @@ def attack(url, n, c, headers):
             'key_name': key_name,
         })
 
-        print 'Stinging URL so it will be cached for the attack.'
+    print 'Stinging URL so it will be cached for the attack.'
 
     # Ping url so it will be cached for testing
     urllib2.urlopen(url)
