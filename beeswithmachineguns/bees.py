@@ -38,8 +38,8 @@ import paramiko
 EC2_INSTANCE_TYPE = 't1.micro'
 STATE_FILENAME = os.path.expanduser('~/.bees')
 
-# Utilities
 
+# Utilities
 def _read_server_list():
     instance_ids = []
 
@@ -56,20 +56,23 @@ def _read_server_list():
 
     return (username, key_name, instance_ids)
 
+
 def _write_server_list(username, key_name, instances):
     with open(STATE_FILENAME, 'w') as f:
         f.write('%s\n' % username)
         f.write('%s\n' % key_name)
         f.write('\n'.join([instance.id for instance in instances]))
 
+
 def _delete_server_list():
     os.remove(STATE_FILENAME)
+
 
 def _get_pem_path(key):
     return os.path.expanduser('~/.ssh/%s.pem' % key)
 
-# Methods
 
+# Methods
 def up(count, group, zone, image_id, username, key_name):
     """
     Startup the load testing server.
@@ -117,11 +120,12 @@ def up(count, group, zone, image_id, username, key_name):
 
         print 'Bee %s is ready for the attack.' % instance.id
 
-    ec2_connection.create_tags(instance_ids, { "Name": "a bee!" })
+    ec2_connection.create_tags(instance_ids, {"Name": "a bee!"})
 
     _write_server_list(username, key_name, reservation.instances)
 
     print 'The swarm has assembled %i bees.' % len(reservation.instances)
+
 
 def report():
     """
@@ -144,6 +148,7 @@ def report():
 
     for instance in instances:
         print 'Bee %s: %s @ %s' % (instance.id, instance.state, instance.ip_address)
+
 
 def down():
     """
@@ -168,6 +173,7 @@ def down():
 
     _delete_server_list()
 
+
 def _attack(params):
     """
     Test the target URL with requests.
@@ -186,12 +192,15 @@ def _attack(params):
 
         print 'Bee %i is firing his machine gun. Bang bang!' % params['i']
 
-        stdin, stdout, stderr = client.exec_command('ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" "%(url)s"' % params)
+        command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(headers)s "%(url)s"' % params
+
+        stdin, stdout, stderr = client.exec_command(command)
 
         response = {}
 
         ab_results = stdout.read()
-        ms_per_request_search = re.search('Time\ per\ request:\s+([0-9.]+)\ \[ms\]\ \(mean\)', ab_results)
+        ms_per_request_search = re.search(
+            'Time\ per\ request:\s+([0-9.]+)\ \[ms\]\ \(mean\)', ab_results)
 
         if not ms_per_request_search:
             print 'Bee %i lost sight of the target (connection timed out).' % params['i']
@@ -223,7 +232,8 @@ def _print_results(results):
     """
     timeout_bees = [r for r in results if r is None]
     exception_bees = [r for r in results if type(r) == socket.error]
-    complete_bees = [r for r in results if r is not None and type(r) != socket.error]
+    complete_bees = [
+        r for r in results if r is not None and type(r) != socket.error]
 
     num_timeout_bees = len(timeout_bees)
     num_exception_bees = len(exception_bees)
@@ -269,8 +279,9 @@ def _print_results(results):
         print 'Mission Assessment: Target severely compromised.'
     else:
         print 'Mission Assessment: Swarm annihilated target.'
-    
-def attack(url, n, c):
+
+
+def attack(url, n, c, headers):
     """
     Test the root url of this site.
     """
@@ -309,11 +320,12 @@ def attack(url, n, c):
             'url': url,
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
+            'headers': ' '.join(['-H "%s"' % header for header in headers]),
             'username': username,
             'key_name': key_name,
         })
 
-    print 'Stinging URL so it will be cached for the attack.'
+        print 'Stinging URL so it will be cached for the attack.'
 
     # Ping url so it will be cached for testing
     urllib2.urlopen(url)
