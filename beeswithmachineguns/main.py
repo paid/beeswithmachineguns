@@ -26,8 +26,7 @@ THE SOFTWARE.
 
 import bees
 import re
-import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Action
 
 NO_TRAILING_SLASH_REGEX = re.compile(r'^.*?\.\w+$')
 
@@ -36,7 +35,6 @@ def parse_arguments():
     """
     Handle the command line arguments for spinning up bees
     """
-    command = sys,
     parser = ArgumentParser(
         description="Bees with Machine Guns: A utility for arming "
         "(creating) many bees (small EC2 instances) to attack (load "
@@ -54,7 +52,6 @@ def parse_arguments():
         "The bees will expect to find a .pem file with this name in ~/.ssh/."
     )
 
-    # Required
     up_group.add_argument(
         '-k', '--key', metavar="KEY",
         action='store', dest='key', type=str,
@@ -105,10 +102,15 @@ def parse_arguments():
         "to the target (default: 100).")
     attack_group.add_argument(
         '-H', '--headers', metavar='HEADERS', nargs='*',
-        action='store', dest='headers', type=str,
+        action=HeadersAction, dest='headers', type=str,
         help="Send arbitray header line(s) along with the attack, "
         "eg. 'Host: www.chicagotribune.com'; Inserted after all normal "
         "header lines. (repeatable)"
+    )
+    attack_group.add_argument(
+        '-C', '--cookies', metavar='COOKIES', nargs='*',
+        action=CookiesAction, dest='cookies', type=str,
+        help="Add cookie, eg. 'Apache=1234'. (repeatable)"
     )
 
     options = parser.parse_args()
@@ -129,12 +131,8 @@ def parse_arguments():
             "before you will be able to attack."
 
         bees.up(
-            options.servers,
-            options.group,
-            options.zone,
-            options.instance,
-            options.login,
-            options.key)
+            options.servers, options.group, options.zone,
+            options.instance, options.login, options.key)
     elif options.command == 'attack':
         if not options.url:
             parser.error('To run an attack you need to specify a url with -u')
@@ -146,7 +144,8 @@ def parse_arguments():
                 "trailing slash.")
 
         bees.attack(
-            options.url, options.number, options.concurrent, options.headers)
+            options.url, options.number, options.concurrent,
+            options.headers, options.cookies)
     elif options.command == 'down':
         bees.down()
     elif options.command == 'report':
@@ -155,6 +154,36 @@ def parse_arguments():
         parser.error(
             "'%s' isn't a command. Try one of: 'up', 'attack', "
             "'report', 'down'" % options.command)
+
+
+class HeadersAction(Action):
+    """
+    Join 'headers' arguments, creating an argument string that
+    can be used when calling ab in the attack
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values is None:
+            setattr(namespace, self.dest, '')
+        else:
+            headers = ' '.join([
+                '-H "%s"' % header for header in values
+            ])
+            setattr(namespace, self.dest, headers)
+
+
+class CookiesAction(Action):
+    """
+    Join 'cookies' arguments, creating an argument string that
+    can be used when calling ab in the attack
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values is None:
+            setattr(namespace, self.dest, '')
+        else:
+            cookies = ' '.join([
+                '-C "%s"' % cookie for cookie in values
+            ])
+            setattr(namespace, self.dest, cookies)
 
 
 def main():

@@ -147,7 +147,8 @@ def report():
         instances.extend(reservation.instances)
 
     for instance in instances:
-        print 'Bee %s: %s @ %s' % (instance.id, instance.state, instance.ip_address)
+        print 'Bee %s: %s @ %s' % (
+            instance.id, instance.state, instance.ip_address)
 
 
 def down():
@@ -192,7 +193,9 @@ def _attack(params):
 
         print 'Bee %i is firing his machine gun. Bang bang!' % params['i']
 
-        command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s -C "sessionid=NotARealSessionID" %(headers)s "%(url)s"' % params
+        command = 'ab -r -n %(num_requests)s -c %(concurrent_requests)s ' \
+            '-C "sessionid=NotARealSessionID" %(headers)s %(cookies)s ' \
+            '"%(url)s"' % params
 
         stdin, stdout, stderr = client.exec_command(command)
 
@@ -203,10 +206,12 @@ def _attack(params):
             'Time\ per\ request:\s+([0-9.]+)\ \[ms\]\ \(mean\)', ab_results)
 
         if not ms_per_request_search:
-            print 'Bee %i lost sight of the target (connection timed out).' % params['i']
+            print 'Bee %i lost sight of the target ' \
+                '(connection timed out).' % params['i']
             return None
 
-        requests_per_second_search = re.search('Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
+        requests_per_second_search = re.search(
+            'Requests\ per\ second:\s+([0-9.]+)\ \[#\/sec\]\ \(mean\)', ab_results)
         fifty_percent_search = re.search('\s+50\%\s+([0-9]+)', ab_results)
         ninety_percent_search = re.search('\s+90\%\s+([0-9]+)', ab_results)
         complete_requests_search = re.search('Complete\ requests:\s+([0-9]+)', ab_results)
@@ -240,13 +245,18 @@ def _print_results(results):
     num_complete_bees = len(complete_bees)
 
     if exception_bees:
-        print '     %i of your bees didn\'t make it to the action. They might be taking a little longer than normal to find their machine guns, or may have been terminated without using "bees down".' % num_exception_bees
+        print '     %i of your bees didn\'t make it to the action. They ' \
+            'might be taking a little longer than normal to find their ' \
+            'machine guns, or may have been terminated without using "bees ' \
+            'down".' % num_exception_bees
 
     if timeout_bees:
-        print '     Target timed out without fully responding to %i bees.' % num_timeout_bees
+        print '     Target timed out without fully responding to ' \
+            '%i bees.' % num_timeout_bees
 
     if num_complete_bees == 0:
-        print '     No bees completed the mission. Apparently your bees are peace-loving hippies.'
+        print '     No bees completed the mission. Apparently your bees ' \
+            'are peace-loving hippies.'
         return
 
     complete_results = [r['complete_requests'] for r in complete_bees]
@@ -281,7 +291,7 @@ def _print_results(results):
         print 'Mission Assessment: Swarm annihilated target.'
 
 
-def attack(url, n, c, headers):
+def attack(url, n, c, headers, cookies):
     """
     Test the root url of this site.
     """
@@ -308,7 +318,8 @@ def attack(url, n, c, headers):
     requests_per_instance = int(float(n) / instance_count)
     connections_per_instance = int(float(c) / instance_count)
 
-    print 'Each of %i bees will fire %s rounds, %s at a time.' % (instance_count, requests_per_instance, connections_per_instance)
+    print 'Each of %i bees will fire %s rounds, %s at a time.' % (
+        instance_count, requests_per_instance, connections_per_instance)
 
     params = []
 
@@ -320,7 +331,8 @@ def attack(url, n, c, headers):
             'url': url,
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
-            'headers': ' '.join(['-H "%s"' % header for header in headers]),
+            'headers': headers,
+            'cookies': cookies,
             'username': username,
             'key_name': key_name,
         })
