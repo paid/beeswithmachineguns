@@ -105,12 +105,14 @@ def parse_arguments():
         action=HeadersAction, dest='headers', type=str,
         help="Send arbitray header line(s) along with the attack, "
         "eg. 'Host: www.chicagotribune.com'; Inserted after all normal "
-        "header lines. (repeatable)"
+        "header lines. (repeatable)",
+        default=''
     )
     attack_group.add_argument(
         '-C', '--cookies', metavar='COOKIES', nargs='*',
         action=CookiesAction, dest='cookies', type=str,
-        help="Add cookie, eg. 'Apache=1234'. (repeatable)"
+        help="Add cookie, eg. 'Apache=1234'. (repeatable)",
+        default=''
     )
 
     options = parser.parse_args()
@@ -162,13 +164,10 @@ class HeadersAction(Action):
     can be used when calling ab in the attack
     """
     def __call__(self, parser, namespace, values, option_string=None):
-        if values is None:
-            setattr(namespace, self.dest, '')
-        else:
-            headers = ' '.join([
-                '-H "%s"' % header for header in values
-            ])
-            setattr(namespace, self.dest, headers)
+        headers = ' '.join([
+            '-H "%s"' % header for header in values
+        ])
+        setattr(namespace, self.dest, headers)
 
 
 class CookiesAction(Action):
@@ -177,13 +176,10 @@ class CookiesAction(Action):
     can be used when calling ab in the attack
     """
     def __call__(self, parser, namespace, values, option_string=None):
-        if values is None:
-            setattr(namespace, self.dest, '')
-        else:
-            cookies = ' '.join([
-                '-C "%s"' % cookie for cookie in values
-            ])
-            setattr(namespace, self.dest, cookies)
+        cookies = ' '.join([
+            '-C "%s"' % cookie for cookie in values
+        ])
+        setattr(namespace, self.dest, cookies)
 
 
 def main():
