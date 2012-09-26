@@ -40,67 +40,66 @@ def parse_arguments():
         "(creating) many bees (small EC2 instances) to attack (load "
         "test) targets (web applications).")
 
-    parser.add_argument(
-        "command", metavar="COMMAND", type=str,
-        help="Availabe commands: 'up', 'attack', 'report', 'down'")
+    subparsers = parser.add_subparsers(dest='subparser_name',
+        help='Bee commands')
 
-    up_group = parser.add_argument_group(
+    up_subparser = subparsers.add_parser(
         "up",
-        "In order to spin up new servers you will need to specify "
+        help="In order to spin up new servers you will need to specify "
         "at least the -k command, which is the name of the EC2 keypair "
         "to use for creating and connecting to the new servers. "
         "The bees will expect to find a .pem file with this name in ~/.ssh/."
     )
 
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-k', '--key', metavar="KEY",
         action='store', dest='key', type=str,
         help="The ssh key pair name to use to connect to the new servers.")
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-s', '--servers', metavar="SERVERS",
         action='store', dest='servers', type=int, default=5,
         help="The number of servers to start (default: 5).")
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-g', '--group', metavar="GROUP",
         action='store', dest='group', type=str, default='default',
         help="The security group to run the instances under "
         "(default: default).")
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-z', '--zone',  metavar="ZONE",
         action='store', dest='zone', type=str, default='us-east-1d',
         help="The availability zone to start the instances "
         "in (default: us-east-1d).")
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-i', '--instance',  metavar="INSTANCE",
         action='store', dest='instance', type=str, default='ami-ff17fb96',
         help="The instance-id to use for each server from "
         "(default: ami-ff17fb96).")
-    up_group.add_argument(
+    up_subparser.add_argument(
         '-l', '--login',  metavar="LOGIN",
         action='store', dest='login', type=str, default='newsapps',
         help="The ssh username name to use to connect to the "
         "new servers (default: newsapps).")
 
-    attack_group = parser.add_argument_group(
+    attack_subparser = subparsers.add_parser(
         "attack",
-        "Beginning an attack requires only that you specify the "
+        help="Beginning an attack requires only that you specify the "
         "-u option with the URL you wish to target.")
 
-    attack_group.add_argument(
+    attack_subparser.add_argument(
         '-u', '--url', metavar="URL",
         action='store', dest='url', type=str,
         help="URL of the target to attack.")
-    attack_group.add_argument(
+    attack_subparser.add_argument(
         '-n', '--number', metavar="NUMBER",
         action='store', dest='number', type=int, default=1000,
         help="The number of total connections to make to "
         "the target (default: 1000).")
-    attack_group.add_argument(
+    attack_subparser.add_argument(
         '-c', '--concurrent', metavar="CONCURRENT",
         action='store', dest='concurrent', type=int, default=100,
         help="The number of concurrent connections to make "
         "to the target (default: 100).")
-    attack_group.add_argument(
+    attack_subparser.add_argument(
         '-H', '--headers', metavar='HEADERS', nargs='*',
         action=HeadersAction, dest='headers', type=str,
         help="Send arbitray header line(s) along with the attack, "
@@ -108,19 +107,25 @@ def parse_arguments():
         "header lines. (repeatable)",
         default=''
     )
-    attack_group.add_argument(
+    attack_subparser.add_argument(
         '-C', '--cookies', metavar='COOKIES', nargs='*',
         action=CookiesAction, dest='cookies', type=str,
         help="Add cookie, eg. 'Apache=1234'. (repeatable)",
         default=''
     )
 
+    down_subparser = subparsers.add_parser(
+        "down",
+        help="Call off the swarm")
+
+    report_subparser = subparsers.add_parser(
+        "report",
+        help="Print the active bees' status")
+
+
     options = parser.parse_args()
 
-    if options.command is None:
-        parser.error('Please enter a command.')
-
-    if options.command == 'up':
+    if options.subparser_name == 'up':
         if not options.key:
             parser.error(
                 "To spin up new instances you need to specify a "
@@ -135,7 +140,7 @@ def parse_arguments():
         bees.up(
             options.servers, options.group, options.zone,
             options.instance, options.login, options.key)
-    elif options.command == 'attack':
+    elif options.subparser_name == 'attack':
         if not options.url:
             parser.error('To run an attack you need to specify a url with -u')
 
@@ -148,14 +153,10 @@ def parse_arguments():
         bees.attack(
             options.url, options.number, options.concurrent,
             options.headers, options.cookies)
-    elif options.command == 'down':
+    elif options.subparser_name == 'down':
         bees.down()
-    elif options.command == 'report':
+    elif options.subparser_name == 'report':
         bees.report()
-    else:
-        parser.error(
-            "'%s' isn't a command. Try one of: 'up', 'attack', "
-            "'report', 'down'" % options.command)
 
 
 class HeadersAction(Action):
