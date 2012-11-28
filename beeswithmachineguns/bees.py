@@ -353,3 +353,93 @@ def attack(url, n, c, headers, cookies):
     _print_results(results)
 
     print 'The swarm is awaiting new orders.'
+
+def execute(command, result_processor):
+    """
+    Test the root url of this site.
+    """
+    username, key_name, instance_ids = _read_server_list()
+
+    if not instance_ids:
+        print 'No bees are ready to attack.'
+        return
+
+    print 'Connecting to the hive.'
+
+    ec2_connection = boto.connect_ec2()
+
+    print 'Assembling bees.'
+
+    reservations = ec2_connection.get_all_instances(instance_ids=instance_ids)
+
+    instances = []
+
+    for reservation in reservations:
+        instances.extend(reservation.instances)
+
+    params = []
+
+    for i, instance in enumerate(instances):
+        params.append({
+            'i': i,
+            'command': command,
+            'instance_id': instance.id,
+            'instance_name': instance.public_dns_name,
+            'username': username,
+            'key_name': key_name,
+        })
+
+    print 'Organizing the swarm.'
+
+    # Spin up processes for connecting to EC2 instances
+    pool = Pool(len(params))
+    results = pool.map(_execute, params)
+
+    print 'Offensive complete.'
+
+    if result_processor:
+        result_processor(results)
+
+    print 'The swarm is awaiting new orders.'
+
+def _execute(params):
+    """
+    Test the target URL with requests.
+
+    Intended for use with multiprocessing.
+    """
+    print 'Bee %i is joining the swarm.' % params['i']
+
+    try:
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            params['instance_name'],
+            username=params['username'],
+            key_filename=_get_pem_path(params['key_name']))
+
+        print 'Bee %i is firing his machine gun. Bang bang!' % params['i']
+
+        command = params['command']
+
+        stdin, stdout, stderr = client.exec_command(command)
+
+        response = stdout.read()
+
+        if type(response) != str:
+            print 'Bee %i lost sight of the target ' \
+                '(connection timed out).' % params['i']
+            return None
+
+        print 'Bee %i is out of ammo.' % params['i']
+
+        client.close()
+
+        return response
+    except socket.error, e:
+        return e
+
+def write_results(results, outfile):
+    if outfile:
+        f = open(outfile, 'w')
+        f.write('\n'.join(results))

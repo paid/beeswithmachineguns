@@ -114,6 +114,18 @@ def parse_arguments():
         default=''
     )
 
+    exec_subparser = subparsers.add_parser(
+        "exec",
+        help="Execute an arbitrary command")
+    exec_subparser.add_argument(
+        '-o', '--outfile', metavar="OUTFILE",
+        action='store', dest='outfile', type=str,
+        help="The local file to write the bees' responses")
+    exec_subparser.add_argument(
+        '-', action=RemoteCommandAction, dest='remote_command',
+        nargs='*', required=True,
+        help="The command each bee should execute")
+
     down_subparser = subparsers.add_parser(
         "down",
         help="Call off the swarm")
@@ -153,6 +165,10 @@ def parse_arguments():
         bees.attack(
             options.url, options.number, options.concurrent,
             options.headers, options.cookies)
+    elif options.subparser_name == 'exec':
+        bees.execute(
+            options.remote_command,
+            lambda x: bees.write_results(x, options.outfile))
     elif options.subparser_name == 'down':
         bees.down()
     elif options.subparser_name == 'report':
@@ -181,6 +197,15 @@ class CookiesAction(Action):
             '-C "%s"' % cookie for cookie in values
         ])
         setattr(namespace, self.dest, cookies)
+
+
+class RemoteCommandAction(Action):
+    """
+    Join the parts of the remote command into a single string suitable for
+    executing from the command-line
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, ' '.join(values))
 
 
 def main():
