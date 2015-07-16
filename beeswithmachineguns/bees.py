@@ -35,7 +35,9 @@ import urllib2
 import boto
 import paramiko
 
-EC2_INSTANCE_TYPE = 't1.micro'
+import traceback
+
+EC2_INSTANCE_TYPE = 't2.micro'
 STATE_FILENAME = os.path.expanduser('~/.bees')
 
 
@@ -73,13 +75,13 @@ def _get_pem_path(key):
 
 
 # Methods
-def up(count, group, zone, image_id, username, key_name):
+def up(count, group, zone, image_id, username, key_name, append, subnet):
     """
     Startup the load testing server.
     """
     existing_username, existing_key_name, instance_ids = _read_server_list()
 
-    if instance_ids:
+    if instance_ids and not append:
         print 'Bees are already assembled and awaiting orders.'
         return
 
@@ -102,13 +104,15 @@ def up(count, group, zone, image_id, username, key_name):
         min_count=count,
         max_count=count,
         key_name=key_name,
-        security_groups=[group],
+        security_group_ids=[group],
+        subnet_id=subnet,
         instance_type=EC2_INSTANCE_TYPE,
         placement=zone)
 
     print 'Waiting for bees to load their machine guns...'
 
-    instance_ids = []
+    if not append:
+        instance_ids = []
 
     for instance in reservation.instances:
         while instance.state != 'running':
@@ -120,9 +124,9 @@ def up(count, group, zone, image_id, username, key_name):
 
         print 'Bee %s is ready for the attack.' % instance.id
 
-    ec2_connection.create_tags(instance_ids, {"Name": "a bee!"})
+    ec2_connection.create_tags(reservation.instances, {"Name": "a bee!"})
 
-    _write_server_list(username, key_name, reservation.instances)
+    _write_server_list(username, key_name, instance_ids)
 
     print 'The swarm has assembled %i bees.' % len(reservation.instances)
 
@@ -187,7 +191,7 @@ def _attack(params):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(
-            params['instance_name'],
+            params['instance_ip'],
             username=params['username'],
             key_filename=_get_pem_path(params['key_name']))
 
@@ -327,7 +331,7 @@ def attack(url, n, c, headers, cookies):
         params.append({
             'i': i,
             'instance_id': instance.id,
-            'instance_name': instance.public_dns_name,
+            'instance_ip': instance.ip_address,
             'url': url,
             'concurrent_requests': connections_per_instance,
             'num_requests': requests_per_instance,
@@ -384,7 +388,7 @@ def execute(command, result_processor):
             'i': i,
             'command': command,
             'instance_id': instance.id,
-            'instance_name': instance.public_dns_name,
+            'instance_ip': instance.ip_address,
             'username': username,
             'key_name': key_name,
         })
@@ -414,7 +418,7 @@ def _execute(params):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(
-            params['instance_name'],
+            params['instance_ip'],
             username=params['username'],
             key_filename=_get_pem_path(params['key_name']))
 

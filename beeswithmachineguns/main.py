@@ -71,14 +71,22 @@ def parse_arguments():
         "in (default: us-east-1d).")
     up_subparser.add_argument(
         '-i', '--instance',  metavar="INSTANCE",
-        action='store', dest='instance', type=str, default='ami-ff17fb96',
+        action='store', dest='instance', type=str, default='ami-1dbe6876',
         help="The instance-id to use for each server from "
         "(default: ami-ff17fb96).")
     up_subparser.add_argument(
         '-l', '--login',  metavar="LOGIN",
-        action='store', dest='login', type=str, default='newsapps',
+        action='store', dest='login', type=str, default='ec2-user',
         help="The ssh username name to use to connect to the "
-        "new servers (default: newsapps).")
+        "new servers (default: ec2-user).")
+    up_subparser.add_argument(
+        '-a', '--append',
+        action='store_true', dest='append', default=False,
+        help="The ssh key pair name to use to connect to the new servers.")
+    up_subparser.add_argument(
+        '-n', '--subnet', metavar="SUBNET",
+        action='store', dest='subnet', type=str, default='subnet-26e18f0d',
+        help="The ssh key pair name to use to connect to the new servers.")
 
     attack_subparser = subparsers.add_parser(
         "attack",
@@ -149,9 +157,10 @@ def parse_arguments():
             "group. You will need to use to the EC2 tools to open it "
             "before you will be able to attack."
 
+        print options
         bees.up(
             options.servers, options.group, options.zone,
-            options.instance, options.login, options.key)
+            options.instance, options.login, options.key, options.append, options.subnet)
     elif options.subparser_name == 'attack':
         if not options.url:
             parser.error('To run an attack you need to specify a url with -u')
